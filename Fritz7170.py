@@ -1,4 +1,5 @@
 import random
+import sys
 import time
 
 from selenium import webdriver
@@ -46,7 +47,7 @@ def has_pswrd_screen():
 def pswrd_eingabe():
     print("Dieses Router hat ein Password feld")
 
-    pswrd = input("Passworteingeben")
+    pswrd = input("Passwort eingeben")
     # pswrd_feld.send_keys(pswrd, Keys.ENTER)
 
     driver.find_element_by_xpath('//*[@id="tProdukt"]/tbody/tr[1]/td[1]')
@@ -67,21 +68,17 @@ def post_reset():
 
 
 def reset_when_pass():
-    try:
-        xPaths = ['//*[@id="uiMainForm"]/p/a', '//*[@id="btn_form_foot"]/button[1]']  # Zurucksetzen beim Login
-        runner(xPaths)
-        for i in range(1, 150):
-            print(f"{121 - i} Sekunden bis zum Neustart ")
-            time.sleep(1)
-        driver.refresh()
-        bigframe = driver.find_element_by_id("frame_content")
+    xPaths = ['//*[@id="uiMainForm"]/p/a', '//*[@id="btn_form_foot"]/button[1]']  # Zurucksetzen beim Login
+    runner(xPaths)
+    for i in range(1, 150):
+        print(f"{150 - i} Sekunden bis zum Neustart ")
+        time.sleep(1)
+    driver.refresh()
+    bigframe = driver.find_element_by_id("frame_content")
 
-        driver.switch_to_frame(bigframe)
+    driver.switch_to_frame(bigframe)
 
-        post_reset()
-
-    except:
-        pass
+    post_reset()
 
 
 def reset_when_nopass():
@@ -90,8 +87,8 @@ def reset_when_nopass():
     runner(xPaths)
 
     driver.switch_to.alert.accept()
-    for i in range(1, 121):
-        print(f"{121 - i} Sekunden bis zum Neustart ")
+    for i in range(1, 150):
+        print(f"{150 - i} Sekunden bis zum Neustart ")
         time.sleep(1)
     driver.refresh()
     bigframe = driver.find_element_by_id("frame_content")
@@ -137,25 +134,54 @@ def wlan_setup(name):
     print("WlanPassword wie auf der Ruckseite")
 
 
-try:
+def loaded():
+    global driver
 
-    driver.get("http://192.168.178.1")
-    time.sleep(5)
+    for t in range(200):
+        print("Trying to reach router attempt ", t)
+        try:
+            driver.get("http://192.168.178.1")
+            driver.find_element_by_id("frame_content")
+            return True
+        except:
+            time.sleep(1)
+    return False
+
+
+try:
+    resettet = False
+    routerAccesable = loaded()
+    if (not routerAccesable):
+        print("Router ist Tot konnte nach 200 sekunden nicht reagieren")
+        sys.exit()
+
     bigframe = driver.find_element_by_id("frame_content")
 
     driver.switch_to_frame(bigframe)
-    wlan_name = input("Geben sie den WLAN Name ein")
     pswrd_exist = has_pswrd_screen()
     try:
         if (has_pswrd_screen()):
             reset_when_pass()
         else:
             reset_when_nopass()
+        resettet = True
+
     except:
-        print("Skip Reset")
+        print("Router war vielleicht im zuruckgesten status")
 
     try:
-        post_reset()
+        if (not resettet):
+            post_reset()
+            runner(['//*[@id="sub_menu_head"]/a[2]/span', '//*[@id="menucontent"]/div[2]/ul/li[6]/ul/li[8]/a',
+                    '//*[@id="page_content"]/ul/li[2]/a', '//*[@id="btn_form_foot"]/button[1]'])
+            driver.switch_to.alert.accept()
+            if (loaded()):
+                bigframe = driver.find_element_by_id("frame_content")
+
+                driver.switch_to_frame(bigframe)
+
+                post_reset()
+                print("Router wurde Zurückgesetzt")
     except:
         print("Skip Postreset")
 
@@ -167,30 +193,16 @@ try:
     try:
         einrichten()
     except:
-        print("Einrichten Skip")
+        print("Einrichten Error")
+        sys.exit()
 
     try:
+        wlan_name = input("Geben sie den WLAN Name ein")
         wlan_setup(wlan_name)
     except:
         print("WLan setup Failed")
-    # # driver.find_element_by_xpath('//*[@id="uiPass"]').send_keys(pswrd, Keys.ENTER)
-    #
-    # driver.find_element_by_xpath('//*[@id="menucontent"]/div[2]/ul/li[2]/a').click()
-    #
-    # driver.find_element_by_xpath('//*[@id="menucontent"]/div[2]/ul/li[2]/ul/li[2]/a').click()
-    #
-    # # MAC = driver.find_elements_by_xpath("//*[contains(text(), 'MAC-Adresse')]").text
-    # # MAC = driver.find_element_by_class_name('ml25').text
-    # MAC = driver.find_element_by_xpath('//*[@id="uiDslIp"]/div/div/div/div/div/p[9]').text
-    # print("Pass MC ")
-    #
-    # print(MAC)
-    # # //*[@id="menucontent"]/div[2]/ul/li[2]/ul/li[2]/a
-    # # "//*[@id="uiPass"]"
-    # # //*[@id="uiPass"]
-    # print("Pass")
 except:
-    print("Error not found")
+    print("ROUTER WURDE NICHT EINGERICHTET")
 
 finally:
     driver.close()
